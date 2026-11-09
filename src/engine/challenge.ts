@@ -94,15 +94,26 @@ export function matchingPairs(
   return pairs
 }
 
-/** Pick a challenge for the picker's filter. Returns null if nothing matches. */
+/** Choose which snippet and mutator to pair for the picker's filter. Null if nothing matches. */
+export function pickPair(
+  registry: Registry,
+  filter: PickFilter,
+  seed: number,
+): { snippet: Snippet; mutator: Mutator } | null {
+  const pairs = matchingPairs(registry, filter)
+  if (pairs.length === 0) return null
+  // The filter is part of the hash so "seed 5, any bug" and "seed 5, DOM bugs"
+  // don't always land on related picks.
+  const rng = mulberry32(hashSeed(`pick:${filter.category ?? '*'}:${filter.mutatorId ?? '*'}:${seed}`))
+  return pickOne(pairs, rng)
+}
+
+/** Pick and build a challenge in one step. Returns null if nothing matches. */
 export function pickChallenge(
   registry: Registry,
   filter: PickFilter,
   seed: number,
 ): Challenge | null {
-  const pairs = matchingPairs(registry, filter)
-  if (pairs.length === 0) return null
-  const rng = mulberry32(hashSeed(`pick:${filter.category ?? '*'}:${filter.mutatorId ?? '*'}:${seed}`))
-  const { snippet, mutator } = pickOne(pairs, rng)
-  return buildChallenge(snippet, mutator, seed)
+  const pair = pickPair(registry, filter, seed)
+  return pair && buildChallenge(pair.snippet, pair.mutator, seed)
 }
