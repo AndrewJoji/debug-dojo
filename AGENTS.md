@@ -32,7 +32,7 @@ When Andrew asks for help with a snippet or mutator:
 ## 4. Engine code style
 
 - `src/engine/`, `src/sandbox/` and `src/mutators/` are plain TypeScript. No React, no UI imports.
-- Files in `src/sandbox/runtime/` must not import anything: they are turned into source text and injected into the sandbox iframe.
+- Functions in `src/sandbox/runtime/` are turned into source text and injected into the sandbox iframe, so they must not use runtime imports or anything defined outside their own body. `import type` is fine (types are erased).
 - Keep functions small and readable. Comment the *why*, not the *what*. Andrew needs to explain every function out loud in an interview.
 
 ## 5. No AI in the app
