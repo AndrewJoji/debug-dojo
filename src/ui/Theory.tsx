@@ -1,21 +1,21 @@
 import { ExternalLink } from 'lucide-react'
-import type { Mutator } from '../engine/types'
+import type { Lesson } from '../engine/types'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
 import { InlineCode } from './InlineCode'
 
 // FR-6: after a solve or a reveal, explain the concept and link to MDN.
-export function Theory({ mutator }: { mutator: Mutator }) {
+export function Theory({ lesson }: { lesson: Lesson }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Why it broke: {mutator.name}</CardTitle>
+        <CardTitle className="text-base">Why it broke: {lesson.name}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm leading-relaxed">
         <p>
-          <InlineCode text={mutator.theory} />
+          <InlineCode text={lesson.theory} />
         </p>
         <ul className="grid gap-1">
-          {mutator.links.map((link) => (
+          {lesson.links.map((link) => (
             <li key={link.href}>
               <a
                 href={link.href}

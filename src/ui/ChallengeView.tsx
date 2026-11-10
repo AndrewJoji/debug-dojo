@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { CheckCircle2, Eye, Play, RotateCcw } from 'lucide-react'
 import type { Outcome } from '../engine/progress'
-import { CATEGORY_LABELS, type Challenge, type RunResult } from '../engine/types'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS, type Challenge, type RunResult } from '../engine/types'
 import { runInIframe } from '../sandbox/iframe-runner'
 import { Alert, AlertDescription, AlertTitle } from './components/ui/alert'
 import { Badge } from './components/ui/badge'
@@ -24,7 +24,7 @@ interface ChallengeViewProps {
 // One challenge from ticket to theory. The parent gives this component a new
 // `key` for each challenge, so all the state below starts fresh every time.
 export function ChallengeView({ challenge, onFinish }: ChallengeViewProps) {
-  const { snippet, mutator } = challenge
+  const { lesson } = challenge
   const [code, setCode] = useState(challenge.broken)
   const [editorKey, setEditorKey] = useState(0)
   const [result, setResult] = useState<RunResult | null>(null)
@@ -42,13 +42,13 @@ export function ChallengeView({ challenge, onFinish }: ChallengeViewProps) {
     finishedRef.current = true
     const timeMs = Date.now() - startedAt.current
     setFinished({ result: outcome, timeMs })
-    onFinish({ mutatorId: mutator.id, result: outcome, hintsUsed: hintsOpened, timeMs, at: new Date() })
+    onFinish({ bugType: challenge.bugType, result: outcome, hintsUsed: hintsOpened, timeMs, at: new Date() })
   }
 
   const run = async () => {
     if (running) return
     setRunning(true)
-    const runResult = await runInIframe({ code, tests: snippet.tests, html: snippet.html, fakeApi: snippet.fakeApi })
+    const runResult = await runInIframe({ code, tests: challenge.tests, html: challenge.html, fakeApi: challenge.fakeApi })
     setResult(runResult)
     setRunning(false)
     setHasRun(true)
@@ -67,20 +67,22 @@ export function ChallengeView({ challenge, onFinish }: ChallengeViewProps) {
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{CATEGORY_LABELS[snippet.category]}</Badge>
+              <Badge variant="outline">{CATEGORY_LABELS[challenge.category]}</Badge>
+              <Badge variant="outline">{DIFFICULTY_LABELS[challenge.difficulty]}</Badge>
+              {challenge.source === 'ai-generated' && <Badge variant="outline">AI-generated</Badge>}
               {/* The bug type gives the answer away, so it only appears once you're done. */}
-              {finished && <Badge variant="secondary">Bug: {mutator.name}</Badge>}
-              <span className="text-xs text-muted-foreground">Ticket DD-{challenge.seed}</span>
+              {finished && <Badge variant="secondary">Bug: {lesson.name}</Badge>}
+              <span className="text-xs text-muted-foreground">Ticket {challenge.ticketRef}</span>
             </div>
-            <CardTitle className="text-lg">{snippet.title}</CardTitle>
+            <CardTitle className="text-lg">{challenge.title}</CardTitle>
             <CardDescription className="text-base text-foreground">“{challenge.ticket}”</CardDescription>
           </CardHeader>
-          {snippet.html && (
+          {challenge.html && (
             <CardContent>
               <details>
                 <summary className="cursor-pointer text-sm font-medium">Page HTML (read-only)</summary>
                 <div className="mt-2">
-                  <Editor initialValue={snippet.html} language="html" readOnly label="Page HTML, read-only" />
+                  <Editor initialValue={challenge.html} language="html" readOnly label="Page HTML, read-only" />
                 </div>
               </details>
             </CardContent>
@@ -142,8 +144,8 @@ export function ChallengeView({ challenge, onFinish }: ChallengeViewProps) {
 
       <div className="grid content-start gap-4">
         <Results result={result} running={running} />
-        <HintLadder hints={mutator.hints} opened={hintsOpened} unlocked={hasRun} onOpen={() => setHintsOpened((n) => Math.min(3, n + 1))} />
-        {finished && <Theory mutator={mutator} />}
+        <HintLadder hints={lesson.hints} opened={hintsOpened} unlocked={hasRun} onOpen={() => setHintsOpened((n) => Math.min(3, n + 1))} />
+        {finished && <Theory lesson={lesson} />}
       </div>
     </div>
   )

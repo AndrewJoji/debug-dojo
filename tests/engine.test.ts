@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChallenge, matchingPairs, pickChallenge, sitesFor } from '../src/engine/challenge'
+import { buildChallenge, candidates, challengeFor, pickChallenge, sitesFor } from '../src/engine/challenge'
 import { defineMutator, defineSnippet } from '../src/engine/define'
 import { lineAt, stripMarkers } from '../src/engine/markers'
 import { emptyStats, loadProgress, recordOutcome, saveProgress, STORAGE_KEY, type StorageLike } from '../src/engine/progress'
@@ -85,7 +85,7 @@ describe('challenges', () => {
 
   it('never shows markers in the original or broken code', () => {
     for (const snippet of registry.snippets) {
-      for (const { mutator } of matchingPairs(registry).filter((p) => p.snippet === snippet)) {
+      for (const mutator of registry.mutators.filter((m) => sitesFor(snippet, m).sites.length > 0)) {
         const challenge = buildChallenge(snippet, mutator, 1)
         expect(challenge.original).not.toMatch(/\/\*@/)
         expect(challenge.broken).not.toMatch(/\/\*@/)
@@ -98,14 +98,37 @@ describe('challenges', () => {
       const challenge = pickChallenge(registry, {}, seed)
       expect(challenge).not.toBeNull()
       expect(challenge!.broken).not.toBe(challenge!.original)
-      expect(challenge!.mutator.hints).toHaveLength(3)
+      expect(challenge!.lesson.hints).toHaveLength(3)
     }
   })
 
-  it('respects the category and bug-type filters', () => {
-    expect(pickChallenge(registry, { category: 'dom-html' }, 3)?.mutator.category).toBe('dom-html')
-    expect(pickChallenge(registry, { mutatorId: 'remove-await' }, 3)?.mutator.id).toBe('remove-await')
-    expect(pickChallenge(registry, { mutatorId: 'no-such-bug' }, 3)).toBeNull()
+  it('respects the category, difficulty, bug-type and source filters', () => {
+    // Category filters on the bug's category (the ticket shows the snippet's, which doesn't give the bug away).
+    const dom = candidates(registry, { category: 'dom-html' })
+    expect(dom.length).toBeGreaterThan(0)
+    expect(dom.every((c) => c.category === 'dom-html')).toBe(true)
+    expect(pickChallenge(registry, { bugType: 'remove-await' }, 3)?.bugType).toBe('remove-await')
+    expect(pickChallenge(registry, { bugType: 'no-such-bug' }, 3)).toBeNull()
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      expect(candidates(registry, { difficulty }).every((c) => c.difficulty === difficulty)).toBe(true)
+    }
+    const generated = candidates(registry, { source: 'ai-generated' })
+    expect(generated.every((c) => c.target.kind === 'generated')).toBe(true)
+    expect(generated).toHaveLength(registry.generated.length)
+  })
+
+  it('rebuilds the same challenge from a URL target, and null for unknown ones', () => {
+    const target = { kind: 'mutated', snippetId: 'fetch-deal-titles', mutatorId: 'remove-await' } as const
+    expect(challengeFor(registry, target, 9)?.broken).toBe(challengeFor(registry, target, 9)?.broken)
+    expect(challengeFor(registry, { kind: 'generated', id: 'does-not-exist' })).toBeNull()
+    for (const problem of registry.generated) {
+      expect(challengeFor(registry, { kind: 'generated', id: problem.id })?.title).toBe(problem.title)
+    }
+  })
+
+  it('labels the scaffold examples as examples', () => {
+    for (const snippet of registry.snippets) expect(registry.sources[`snippet:${snippet.id}`]).toBeDefined()
+    expect(registry.sources['mutator:remove-await']).toBe('example')
   })
 })
 
@@ -116,9 +139,9 @@ describe('progress', () => {
   }
 
   it('records solves, reveals, hints and best time', () => {
-    let progress = recordOutcome({}, { mutatorId: 'remove-await', result: 'solved', hintsUsed: 2, timeMs: 90_000, at: new Date(0) })
-    progress = recordOutcome(progress, { mutatorId: 'remove-await', result: 'solved', hintsUsed: 0, timeMs: 30_000, at: new Date(0) })
-    progress = recordOutcome(progress, { mutatorId: 'remove-await', result: 'revealed', hintsUsed: 3, timeMs: 10_000, at: new Date(0) })
+    let progress = recordOutcome({}, { bugType: 'remove-await', result: 'solved', hintsUsed: 2, timeMs: 90_000, at: new Date(0) })
+    progress = recordOutcome(progress, { bugType: 'remove-await', result: 'solved', hintsUsed: 0, timeMs: 30_000, at: new Date(0) })
+    progress = recordOutcome(progress, { bugType: 'remove-await', result: 'revealed', hintsUsed: 3, timeMs: 10_000, at: new Date(0) })
     expect(progress['remove-await']).toEqual({
       ...emptyStats(),
       attempts: 3,
@@ -132,7 +155,7 @@ describe('progress', () => {
 
   it('survives a save and load (a page reload)', () => {
     const storage = memoryStorage()
-    const progress = recordOutcome({}, { mutatorId: 'x', result: 'solved', hintsUsed: 1, timeMs: 5, at: new Date(0) })
+    const progress = recordOutcome({}, { bugType: 'x', result: 'solved', hintsUsed: 1, timeMs: 5, at: new Date(0) })
     saveProgress(storage, progress)
     expect(loadProgress(storage)).toEqual(progress)
   })
