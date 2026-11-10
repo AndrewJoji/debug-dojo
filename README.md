@@ -18,14 +18,34 @@ This is a **hybrid build**, and the split is deliberate:
 | --- | --- |
 | **Claude (AI), in one scaffold PR** | Engine, sandbox, fake fetch, UI, tests, CI, deploy, this README, plus **3 example snippets and 3 example mutators** (marked `// scaffold-example`). |
 | **Andrew, by hand, AI-off** | **Every** snippet and mutator after the scaffold, one per ~45-minute session with docs open. Each file starts with `// hand-written`. Sessions are logged in [`docs/practice-log.md`](docs/practice-log.md). |
+| **AI generator, daily (since v0.2)** | Whole pre-broken problems in `src/generated/`, at easy, medium and hard. Muse writes one a day, CI validates it, Claude reviews it, and it ships only if both pass. They're labelled "AI-generated" in the app. |
 
-AI is used afterwards only to review and explain, never to write snippets or mutators. The rules are in [`AGENTS.md`](AGENTS.md), and CI enforces the headers. To get the current count, run:
+AI is never used to write snippets or mutators; there it only reviews and explains. Generated problems are a separate, clearly labelled pool, so you can practise on them while the hand-written count stays honest. The rules are in [`AGENTS.md`](AGENTS.md), and CI enforces the labels. To get the current counts, run:
 
 ```
 npm run authorship
 ```
 
-At the scaffold, there are 0 hand-written files and 6 scaffold examples (3 snippets, 3 mutators).
+At v0.2, there are 0 hand-written files, 6 scaffold examples (3 snippets, 3 mutators) and 3 AI-generated seed problems.
+
+## AI-generated problems, on a Claude plan (not API credits)
+
+Nothing calls AI while you practise. Problems are generated ahead of time and shipped as static JSON:
+
+```
+Muse (daily, scheduled) ──PR: one src/generated/<id>.json──▶ generated.yml
+   guard:    adds exactly one JSON file and nothing else?
+   validate: original passes, broken fails, one 1–3 line bug, unique, no forbidden APIs
+   review:   Claude checks realism, fairness, hints, theory, difficulty (docs/review-checklist.md)
+   ship:     all passed → squash-merge → deploy        any failed → close with reasons → Muse learns
+```
+
+- **Paid for by a plan, not credits.** Muse runs on its own schedule, and the review uses `claude-code-action` with a Claude Code OAuth token. Live generation for public visitors would need an API key and a backend, so it isn't offered.
+- **Safety.**
+  - Generated code only runs in the CI job that holds no secrets.
+  - The reviewer can only read files.
+  - The sandbox's CSP blocks any real network request from user code.
+- **Anyone can write a generator.** [`docs/generating.md`](docs/generating.md) is the contract, and `/generate-challenge` does the same from Claude Code.
 
 ## How it works
 
@@ -36,6 +56,7 @@ picker ──seed──▶ engine ──▶ (snippet, mutator, site) ──▶ b
                                                                (fake fetch, 3 s limit)
 ```
 
+- **Generated problems** (`src/generated/*.json`): a working version, a broken version, tests, a ticket, hints and theory, all in one file, with no mutator needed.
 - **Snippets** (`src/snippets/`): a working piece of code, the tests that prove it works, optional page HTML, and fake API routes.
 - **Mutators** (`src/mutators/`): one kind of bug. Each answers two questions: *where could this bug go?* (`findSites`) and *break it there* (`breakAt`). Each also carries the ticket, the three hints, the theory note and MDN links.
 - **Deterministic:** the same snippet, mutator and seed always give the same bug (`src/engine/random.ts`, a seeded mulberry32 generator). The challenge lives in the URL (`#/c/<snippet>/<mutator>/<seed>`), so a reload or a shared link reproduces it exactly.

@@ -1,0 +1,55 @@
+{
+  "source": "ai-generated",
+  "generatedBy": "claude-code",
+  "generatedAt": "2026-11-10",
+  "id": "product-search-special-characters",
+  "title": "Search the product catalogue",
+  "category": "http-api",
+  "difficulty": "medium",
+  "bugType": "unencoded-query-param",
+  "bugName": "Unencoded query parameter",
+  "ticket": "Search works for simple words like 'mouse', but searching for 'usb c & hdmi' shows an error, even though we sell that adapter.",
+  "fakeApi": {
+    "GET /api/search?q=mouse": {
+      "body": {
+        "results": [
+          {
+            "name": "Wireless mouse"
+          },
+          {
+            "name": "Gaming mouse"
+          }
+        ]
+      }
+    },
+    "GET /api/search?q=usb%20c%20%26%20hdmi": {
+      "delay": 20,
+      "body": {
+        "results": [
+          {
+            "name": "USB-C to HDMI adapter"
+          }
+        ]
+      }
+    }
+  },
+  "original": "async function searchProducts(term) {\n  const url = '/api/search?q=' + encodeURIComponent(term);\n  const res = await fetch(url);\n  if (!res.ok) throw new Error('Search failed: ' + res.status);\n  const data = await res.json();\n  return data.results.map((product) => product.name);\n}\n",
+  "broken": "async function searchProducts(term) {\n  const url = '/api/search?q=' + term;\n  const res = await fetch(url);\n  if (!res.ok) throw new Error('Search failed: ' + res.status);\n  const data = await res.json();\n  return data.results.map((product) => product.name);\n}\n",
+  "tests": "test('finds products for a simple word', async () => {\n  assert.deepEqual(await searchProducts('mouse'), ['Wireless mouse', 'Gaming mouse']);\n});\n\ntest('finds products when the search has spaces and an ampersand', async () => {\n  assert.deepEqual(await searchProducts('usb c & hdmi'), ['USB-C to HDMI adapter']);\n});\n\ntest('sends the whole search term as one query parameter', async () => {\n  await searchProducts('usb c & hdmi').catch(() => {});\n  assert.equal(api.requests[0].url, '/api/search?q=usb%20c%20%26%20hdmi');\n});\n",
+  "hints": [
+    "Compare the request the code sends for 'mouse' with the one it sends for 'usb c & hdmi'. Look at how the URL is built.",
+    "The search term goes into the URL exactly as typed. In a URL, `&` starts a new query parameter and spaces are not allowed, so the server never receives the full term.",
+    "Encode the term before putting it in the URL: `'/api/search?q=' + encodeURIComponent(term)`, or build the query with `URLSearchParams`."
+  ],
+  "theory": "Some characters have special meaning in a URL: `&` separates query parameters, `#` starts the fragment, `?` starts the query and `+` can mean a space. Any value you put into a URL, especially user input, must be percent-encoded with `encodeURIComponent()`, or built with `URLSearchParams`, which encodes for you. This bug is a classic in support tickets because it only appears for some inputs: everything works until a customer types an ampersand, an accent or a slash.",
+  "links": [
+    {
+      "label": "MDN: encodeURIComponent()",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent"
+    },
+    {
+      "label": "MDN: URLSearchParams",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams"
+    }
+  ]
+}

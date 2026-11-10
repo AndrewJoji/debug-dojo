@@ -136,14 +136,24 @@ function Home() {
             <CardTitle className="text-base">{all.length} challenges</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((d) => (
-                <Stat key={d} label={DIFFICULTY_LABELS[d]} value={count('difficulty', d)} />
-              ))}
-              {(Object.keys(SOURCE_LABELS) as Source[]).map((s) => (
-                <Stat key={s} label={SOURCE_LABELS[s]} value={count('source', s)} />
-              ))}
-            </dl>
+            <div className="grid grid-cols-2 gap-6 text-sm">
+              <div>
+                <h3 className="mb-1 text-xs font-medium text-muted-foreground uppercase">By level</h3>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                  {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((d) => (
+                    <Stat key={d} label={DIFFICULTY_LABELS[d]} value={count('difficulty', d)} />
+                  ))}
+                </dl>
+              </div>
+              <div>
+                <h3 className="mb-1 text-xs font-medium text-muted-foreground uppercase">By source</h3>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                  {(Object.keys(SOURCE_LABELS) as Source[]).map((s) => (
+                    <Stat key={s} label={SOURCE_LABELS[s]} value={count('source', s)} />
+                  ))}
+                </dl>
+              </div>
+            </div>
             <p className="mt-3 text-xs text-muted-foreground">
               AI-generated problems are written ahead of time, reviewed and tested before they ship. Nothing calls AI
               while you practise.

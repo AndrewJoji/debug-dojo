@@ -42,10 +42,10 @@ export function Picker({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn('flex flex-wrap items-end gap-2', className)}>
+    <div className={cn('grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap', className)}>
       <Field label="Category">
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-40" aria-label="Category">
+          <SelectTrigger className="w-full sm:w-40" aria-label="Category">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -61,7 +61,7 @@ export function Picker({ className }: { className?: string }) {
       </Field>
       <Field label="Difficulty">
         <Select value={difficulty} onValueChange={setDifficulty}>
-          <SelectTrigger className="w-32" aria-label="Difficulty">
+          <SelectTrigger className="w-full sm:w-32" aria-label="Difficulty">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -77,7 +77,7 @@ export function Picker({ className }: { className?: string }) {
       </Field>
       <Field label="Bug type">
         <Select value={bugType} onValueChange={setBugType}>
-          <SelectTrigger className="w-44" aria-label="Bug type">
+          <SelectTrigger className="w-full sm:w-44" aria-label="Bug type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -92,7 +92,7 @@ export function Picker({ className }: { className?: string }) {
       </Field>
       <Field label="Source">
         <Select value={source} onValueChange={setSource}>
-          <SelectTrigger className="w-40" aria-label="Source">
+          <SelectTrigger className="w-full sm:w-40" aria-label="Source">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -106,7 +106,7 @@ export function Picker({ className }: { className?: string }) {
           </SelectContent>
         </Select>
       </Field>
-      <div className="flex gap-2">
+      <div className="col-span-2 flex gap-2">
         <Button onClick={() => start(filter)} disabled={matches === 0}>
           New challenge
         </Button>
@@ -115,7 +115,7 @@ export function Picker({ className }: { className?: string }) {
         </Button>
       </div>
       {matches === 0 && (
-        <p className="w-full text-sm text-muted-foreground" role="status">
+        <p className="col-span-2 w-full text-sm text-muted-foreground" role="status">
           No challenges match that combination yet. Loosen a filter.
         </p>
       )}
