@@ -25,11 +25,14 @@ export interface BugStats {
   lastPlayed: string | null
 }
 
-/** Stats keyed by mutator id: a mutator *is* a bug type. */
+/**
+ * Stats keyed by bug type: a mutator id (e.g. "remove-await"), or a generated
+ * problem's bugType. Mutator ids were the only keys in v0, so old saves still line up.
+ */
 export type Progress = Record<string, BugStats>
 
 export interface Outcome {
-  mutatorId: string
+  bugType: string
   result: 'solved' | 'revealed'
   hintsUsed: number
   timeMs: number
@@ -63,7 +66,7 @@ export function saveProgress(storage: StorageLike, progress: Progress): void {
 
 /** Fold one finished challenge into the stats. Returns a new object. */
 export function recordOutcome(progress: Progress, outcome: Outcome): Progress {
-  const before = progress[outcome.mutatorId] ?? emptyStats()
+  const before = progress[outcome.bugType] ?? emptyStats()
   const solved = outcome.result === 'solved'
   const after: BugStats = {
     attempts: before.attempts + 1,
@@ -76,5 +79,5 @@ export function recordOutcome(progress: Progress, outcome: Outcome): Progress {
         : before.bestTimeMs,
     lastPlayed: outcome.at.toISOString(),
   }
-  return { ...progress, [outcome.mutatorId]: after }
+  return { ...progress, [outcome.bugType]: after }
 }

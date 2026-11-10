@@ -1,0 +1,45 @@
+{
+  "source": "ai-generated",
+  "generatedBy": "claude-code",
+  "generatedAt": "2026-11-10",
+  "id": "save-settings-returns-too-early",
+  "title": "Save every setting",
+  "category": "async-fetch",
+  "difficulty": "hard",
+  "bugType": "async-foreach",
+  "bugName": "async callback in forEach",
+  "ticket": "After pressing Save, the page says 'Saved 0 settings'. When I reload, my changes are usually there, but not always.",
+  "fakeApi": {
+    "PUT /api/settings/theme": {
+      "status": 204,
+      "delay": 30
+    },
+    "PUT /api/settings/language": {
+      "status": 204,
+      "delay": 60
+    }
+  },
+  "original": "async function saveAll(settings) {\n  const saved = [];\n  for (const setting of settings) {\n    const res = await fetch('/api/settings/' + setting.key, {\n      method: 'PUT',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ value: setting.value }),\n    });\n    if (!res.ok) throw new Error('Could not save ' + setting.key + ': ' + res.status);\n    saved.push(setting.key);\n  }\n  return saved;\n}\n",
+  "broken": "async function saveAll(settings) {\n  const saved = [];\n  settings.forEach(async (setting) => {\n    const res = await fetch('/api/settings/' + setting.key, {\n      method: 'PUT',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ value: setting.value }),\n    });\n    if (!res.ok) throw new Error('Could not save ' + setting.key + ': ' + res.status);\n    saved.push(setting.key);\n  });\n  return saved;\n}\n",
+  "tests": "test('resolves with every saved key, in order', async () => {\n  const saved = await saveAll([\n    { key: 'theme', value: 'dark' },\n    { key: 'language', value: 'en' },\n  ]);\n  assert.deepEqual(saved, ['theme', 'language']);\n});\n\ntest('sends each setting as a JSON PUT', async () => {\n  await saveAll([{ key: 'theme', value: 'dark' }]);\n  const request = api.requests[0];\n  assert.equal(request.method, 'PUT');\n  assert.equal(request.url, '/api/settings/theme');\n  assert.deepEqual(JSON.parse(request.body), { value: 'dark' });\n});\n",
+  "hints": [
+    "The function reports success before the saves have finished. Look at how it loops over the settings and what it actually waits for.",
+    "`forEach` ignores whatever its callback returns. An `async` callback returns a promise, but nothing awaits it, so `saveAll` returns the still-empty `saved` array while the requests are in flight.",
+    "Use a loop that can await: `for (const setting of settings) { ... }` with the `await fetch(...)` inside. (If the saves can run at the same time, `await Promise.all(settings.map(async (setting) => ...))` also works.)"
+  ],
+  "theory": "`Array.prototype.forEach` calls its callback and throws away the return value. With an `async` callback, that return value is a promise, so the loop starts every request and moves on without waiting, and the enclosing function finishes early. The symptom is misleading: the work usually does happen, just later, so it looks like a flaky server. Use `for...of` with `await` to run steps one after another, or `map` plus `Promise.all` to run them in parallel and wait for all of them. Errors thrown inside a forEach async callback are also lost, because nobody is listening for them.",
+  "links": [
+    {
+      "label": "MDN: Array.prototype.forEach()",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach"
+    },
+    {
+      "label": "MDN: for...of",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of"
+    },
+    {
+      "label": "MDN: Promise.all()",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all"
+    }
+  ]
+}

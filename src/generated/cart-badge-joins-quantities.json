@@ -1,0 +1,31 @@
+{
+  "source": "ai-generated",
+  "generatedBy": "claude-code",
+  "generatedAt": "2026-11-10",
+  "id": "cart-badge-joins-quantities",
+  "title": "Count the items in the cart",
+  "category": "data-json",
+  "difficulty": "easy",
+  "bugType": "string-concatenation",
+  "bugName": "Strings joined instead of added",
+  "ticket": "The cart badge says \"023\" items when I only have five things in my cart.",
+  "original": "function countItems(cart) {\n  let count = 0;\n  for (const item of cart.items) {\n    count += Number(item.qty);\n  }\n  return count;\n}\n",
+  "broken": "function countItems(cart) {\n  let count = 0;\n  for (const item of cart.items) {\n    count += item.qty;\n  }\n  return count;\n}\n",
+  "tests": "test('adds up the quantity of every item', () => {\n  const cart = { items: [{ sku: 'A1', qty: '2' }, { sku: 'B7', qty: '3' }] };\n  assert.equal(countItems(cart), 5);\n});\n\ntest('an empty cart has zero items', () => {\n  assert.equal(countItems({ items: [] }), 0);\n});\n",
+  "hints": [
+    "Look at the line that adds each item's quantity to the running count. What type is `qty` in the cart data?",
+    "The quantities arrive from the API as strings. When either side of `+` is a string, JavaScript joins text instead of adding numbers.",
+    "Convert the quantity before adding it: `count += Number(item.qty);`"
+  ],
+  "theory": "The `+` operator does two jobs: if either operand is a string, it concatenates; otherwise it adds. JSON from APIs often carries numbers as strings (\"2\" rather than 2), especially for money and quantities, so `0 + \"2\" + \"3\"` becomes \"023\". Convert at the boundary with `Number()` (or `parseInt` for whole numbers) as soon as the data arrives, and when a number looks wrong, check `typeof` before suspecting the maths.",
+  "links": [
+    {
+      "label": "MDN: Addition (+)",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Addition"
+    },
+    {
+      "label": "MDN: Number() constructor",
+      "href": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/Number"
+    }
+  ]
+}

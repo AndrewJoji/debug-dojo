@@ -19,10 +19,17 @@ import { runHarness } from './runtime/harness'
 // normally reports the timeout itself (with per-test detail) before we kill it.
 const KILL_AFTER_MS = RUN_TIMEOUT_MS + 750
 
+// Content Security Policy for the sandbox page. `default-src 'none'` blocks
+// every real network request (fetch, XHR, images, fonts, frames...), so user
+// code can only ever talk to the fake fetch. Inline scripts and eval stay
+// allowed because the harness itself is an inline script that uses new Function.
+const SANDBOX_CSP =
+  "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data:"
+
 /** The page that boots inside the iframe. The runtime arrives as source text. */
 function sandboxPage(html: string): string {
   return `<!doctype html>
-<html><head><meta charset="utf-8"></head>
+<html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${SANDBOX_CSP}"></head>
 <body>${html}
 <script>
 const createFakeFetch = ${String(createFakeFetch)};

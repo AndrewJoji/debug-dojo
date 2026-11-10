@@ -152,3 +152,24 @@ v0 is done when every item below holds.
 - [ ] **Hosting.** GitHub Pages or Vercel?
 - [ ] **Hints.** Unlock freely, or only after a set time (e.g. 5 minutes) to force a real attempt first?
 - [ ] **Interview mode.** Add a timed mode with no hints in v0, or leave it for v1?
+
+## Amendment v0.2: AI-generated problems (Nov 10, 2026)
+
+Approved by Andrew after v0 shipped. This amends **Scope** (AI-generated bugs move from out of scope to in scope, pre-generated only) and the **No AI during practice** requirement (it now reads "no AI calls at runtime").
+
+- **The rule:** AI may *create* problems; it never helps *solve* them, and the app never calls AI. Hand-written snippets and mutators stay AI-off, as before.
+- **What changes:**
+  - A third kind of challenge: whole pre-broken problems stored as JSON in `src/generated/`, at three difficulties (easy, medium, hard).
+  - The picker filters by difficulty and by source (hand-written, example, AI-generated).
+  - Generated problems are labelled in the UI and counted separately in the README.
+- **How problems are made, on Andrew's Claude plan, not API credits:**
+  1. Muse runs `docs/generator-prompt.md` daily and opens a PR adding one file.
+  2. `.github/workflows/generated.yml` checks that the PR adds exactly one JSON file and nothing else.
+  3. CI validates it: the original passes, the broken version fails, it's a 1–3 line bug, it's unique, and it uses no forbidden APIs.
+  4. Claude reviews it against `docs/review-checklist.md`.
+  5. If everything passes, the PR auto-merges and deploys. If anything fails, it's closed with reasons, which the generator reads on its next run.
+- **Why ahead of time and not live:** plan usage can't serve public visitors. Live generation would need an API key, paid credits and a backend, and would bill every visitor's request to Andrew.
+- **Safety:**
+  - The sandbox now has a CSP that blocks all real network requests from user code.
+  - Untrusted generated code only runs in a CI job with no secrets.
+  - The reviewer has read-only tools.

@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { CircleAlert } from 'lucide-react'
-import { buildChallenge, appliesTo } from '../engine/challenge'
+import { candidates, challengeFor } from '../engine/challenge'
 import { loadProgress, recordOutcome, saveProgress, type Outcome, type Progress } from '../engine/progress'
 import { registry } from '../engine/registry'
+import { DIFFICULTY_LABELS, SOURCE_LABELS, type Difficulty, type Source } from '../engine/types'
 import { Alert, AlertDescription, AlertTitle } from './components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
 import { ChallengeView } from './ChallengeView'
@@ -27,18 +28,19 @@ export function App() {
   }
 
   // Build the challenge from the URL. Same URL, same bug, every time.
-  const challenge = useMemo(() => {
-    if (route.page !== 'challenge') return null
-    const snippet = registry.snippets.find((s) => s.id === route.snippetId)
-    const mutator = registry.mutators.find((m) => m.id === route.mutatorId)
-    if (!snippet || !mutator || !appliesTo(snippet, mutator)) return 'invalid' as const
-    return buildChallenge(snippet, mutator, route.seed)
-  }, [route])
+  const challenge = useMemo(
+    () => (route.page === 'challenge' ? (challengeFor(registry, route.target, route.seed) ?? 'invalid') : null),
+    [route],
+  )
+
+  // Challenges need room for the editor and side panel; every other page is
+  // a single centered column, so the header, picker and content line up.
+  const width = route.page === 'challenge' ? 'max-w-7xl' : 'max-w-3xl'
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="border-b">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className={cn('mx-auto flex w-full items-center justify-between gap-3 px-4 py-3', width)}>
           <a href="#/" className="font-mono text-lg font-semibold">
             debug-dojo
           </a>
@@ -53,16 +55,15 @@ export function App() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6">
-        {route.page !== 'progress' && <Picker />}
-
-        {route.page === 'home' && <Welcome />}
+      <main className={cn('mx-auto grid w-full flex-1 content-start gap-6 px-4 py-8', width)}>
+        {route.page === 'home' && <Home />}
         {route.page === 'progress' && <ProgressView progress={progress} />}
+        {route.page === 'challenge' && <Picker />}
         {challenge === 'invalid' && (
           <Alert variant="destructive">
             <CircleAlert aria-hidden />
-            <AlertTitle>Error: this challenge link doesn't match any snippet</AlertTitle>
-            <AlertDescription>The snippet or bug type may have been renamed. Pick a new challenge above.</AlertDescription>
+            <AlertTitle>Error: this challenge link doesn't match any challenge</AlertTitle>
+            <AlertDescription>It may have been renamed or removed. Pick a new challenge above.</AlertDescription>
           </Alert>
         )}
         {challenge && challenge !== 'invalid' && (
@@ -71,8 +72,8 @@ export function App() {
         )}
       </main>
 
-      <footer className="mx-auto max-w-7xl px-4 pb-8 text-xs text-muted-foreground">
-        No AI, no backend: your code runs in a sandboxed iframe in this browser.{' '}
+      <footer className={cn('mx-auto w-full px-4 pb-8 text-xs text-muted-foreground', width)}>
+        No AI while you practise, no backend: your code runs in a sandboxed iframe in this browser.{' '}
         <a className="underline underline-offset-4" href="https://github.com/AndrewJoji/debug-dojo">
           Source on GitHub
         </a>
@@ -93,28 +94,82 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   )
 }
 
-function Welcome() {
+function Home() {
+  const all = candidates(registry)
+  const count = <K extends 'difficulty' | 'source'>(key: K, value: string) => all.filter((c) => c[key] === value).length
+
   return (
-    <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle>Find the bug. Fix it. Know why.</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-3 text-sm leading-relaxed">
-        <p>
-          Each challenge takes a small, working piece of JavaScript, HTML or API code and injects one realistic bug.
-          You get a symptom report, like a customer ticket, and the code.
+    <>
+      <section className="grid gap-3 py-4 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the bug. Fix it. Know why.</h1>
+        <p className="mx-auto max-w-xl text-muted-foreground">
+          Each challenge is a small, working piece of JavaScript, HTML or API code with one realistic bug in it, a
+          symptom report written like a customer ticket, and tests that tell you when it's fixed.
         </p>
-        <ol className="list-decimal space-y-1 pl-5">
-          <li>Read the ticket and the code.</li>
-          <li>Press Run to see which tests fail. Hints unlock after your first run.</li>
-          <li>Fix the code until every test passes.</li>
-          <li>Read why it broke, with links to MDN.</li>
-        </ol>
-        <p className="text-muted-foreground">
-          {registry.snippets.length} snippets and {registry.mutators.length} bug types so far. Pick a category above, or
-          press Random.
-        </p>
-      </CardContent>
-    </Card>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Start a challenge</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Picker />
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">How it works</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol className="list-decimal space-y-1 pl-5 text-sm leading-relaxed">
+              <li>Read the ticket and the code.</li>
+              <li>Press Run to see which tests fail. Hints unlock after your first run.</li>
+              <li>Fix the code until every test passes.</li>
+              <li>Read why it broke, with links to MDN.</li>
+            </ol>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{all.length} challenges</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-6 text-sm">
+              <div>
+                <h3 className="mb-1 text-xs font-medium text-muted-foreground uppercase">By level</h3>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                  {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((d) => (
+                    <Stat key={d} label={DIFFICULTY_LABELS[d]} value={count('difficulty', d)} />
+                  ))}
+                </dl>
+              </div>
+              <div>
+                <h3 className="mb-1 text-xs font-medium text-muted-foreground uppercase">By source</h3>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                  {(Object.keys(SOURCE_LABELS) as Source[]).map((s) => (
+                    <Stat key={s} label={SOURCE_LABELS[s]} value={count('source', s)} />
+                  ))}
+                </dl>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              AI-generated problems are written ahead of time, reviewed and tested before they ship. Nothing calls AI
+              while you practise.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right tabular-nums">{value}</dd>
+    </>
   )
 }
